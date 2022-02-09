@@ -52,6 +52,10 @@ class DiceLoss:
         return x.argmax(dim=self.axis)
 
     
+def get_model_parameters(model):
+    return sum(p.numel() for p in model.parameters())
+
+    
 def get_predictions(learner):
     inputs, predictions, targets, outputs = learner.get_preds(with_input=True, with_decoded=True)
     x, y, samples, outputs = learner.dls.valid.show_results(
@@ -116,7 +120,9 @@ def train_fn():
             wandb.config.image_width // wandb.config.image_resize_factor
         )),
     )
-    segmentation_model = SegmentationModel(num_classes=len(codes))
+    segmentation_model = SegmentationModel(
+        backbone=wandb.config.backbone, num_classes=len(codes)
+    )
     loss_fn = None
     if wandb.config.loss_function == "categorical_cross_entropy":
         loss_fn = CrossEntropyLossFlat(axis=1)
@@ -148,7 +154,8 @@ def train_fn():
     samples, outputs, predictions = get_predictions(learner)
     table = create_wandb_table(samples, outputs, predictions)
     wandb.log({f"Predictions-{run.name}": table})
-    wandb.log({"Model Params": sum(p.numel() for p in segmentation_model.parameters())})
+    get_model_parameters(segmentation_model)
+    # wandb.log({"Model Params": sum(p.numel() for p in segmentation_model.parameters())})
 
     
 sweep_config_backbone = {
@@ -173,11 +180,15 @@ sweep_config_backbone = {
                 "vgg16"
             ]
         },
+        "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
         "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
         "fit": {"values": ["fit", "fine-tune"]}
     },
 }
 
 
-sweep_id = wandb.sweep(sweep_config_backbone, project="autonomous-vehicle-status-report")
+sweep_id = wandb.sweep(
+    sweep_config_backbone,
+    project="autonomous-vehicle-status-report"
+)
 wandb.agent(sweep_id, function=train_fn)
