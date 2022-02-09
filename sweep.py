@@ -16,7 +16,7 @@ import fastai
 from fastai.vision.all import *
 from fastai.callback.wandb import WandbCallback
 
-from .model import SegmentationModel
+from model import SegmentationModel
 
 
 path = untar_data(URLs.CAMVID)
@@ -154,7 +154,7 @@ def train_fn():
     samples, outputs, predictions = get_predictions(learner)
     table = create_wandb_table(samples, outputs, predictions)
     wandb.log({f"Predictions-{run.name}": table})
-    get_model_parameters(segmentation_model)
+    wandb.log({"Model Params": get_model_parameters(segmentation_model)})
     # wandb.log({"Model Params": sum(p.numel() for p in segmentation_model.parameters())})
 
     
