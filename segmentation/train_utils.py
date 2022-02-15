@@ -28,11 +28,11 @@ def get_predictions(learner):
 def benchmark_inference_time(
     model, image_shape: Tuple[int, int], batch_size: int, num_iter: int, seed: int
 ):
-    data_loader, class_labels = get_dataloader(
+    data_loader, _ = get_dataloader(
         artifact_id="av-demo/CamVid/camvid-dataset:v0",
         batch_size=batch_size,
         image_shape=image_shape,
-        resize_factor=1,
+        resize_factor=2,
         validation_split=0.2,
         seed=seed,
     )
