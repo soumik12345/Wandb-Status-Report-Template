@@ -5,8 +5,8 @@ from typing import Tuple, List
 from fastai.vision.all import *
 from fastai.callback.wandb import WandbCallback
 
-from camvid_utils import get_dataloader
-from model import SegmentationModel
+from .camvid_utils import get_dataloader
+from .model import SegmentationModel
 
 
 def get_model_parameters(model):
