@@ -96,6 +96,7 @@ def train_fn():
 
     model = learner.model.eval()
     torch.cuda.empty_cache()
+    del learner
     wandb.log({"Model_Parameters": get_model_parameters(model)})
     wandb.log(
         {
