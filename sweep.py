@@ -37,10 +37,7 @@ LOSS_ALIAS_MAPPING = {
 SWEEP_CONFIG = {
     "method": "bayes",
     "metric": {"name": "foreground_acc", "goal": "maximize"},
-    "early_terminate": {
-        "type": "hyperband",
-        "min_iter": 5,
-    },
+    "early_terminate": {"type": "hyperband", "min_iter": 5,},
     "parameters": {
         "batch_size": {"values": [4, 8, 16]},
         "image_resize_factor": {"values": [2, 4]},
@@ -101,10 +98,18 @@ def train_fn():
     torch.cuda.empty_cache()
     wandb.log({"Model_Parameters": get_model_parameters(model)})
     wandb.log(
-        {"Inference_Time": benchmark_inference_time(model, batch_size=8, num_iter=20)}
+        {
+            "Inference_Time": benchmark_inference_time(
+                model,
+                image_shape=(wandb.config.image_height, wandb.config.image_width),
+                batch_size=8,
+                num_iter=20,
+                seed=wandb.config.seed,
+            )
+        }
     )
 
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT)
-    wandb.agent(sweep_id, function=train_fn, count=10)
+    wandb.agent(sweep_id, function=train_fn, count=5)
