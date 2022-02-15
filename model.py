@@ -12,7 +12,7 @@ class ConvLayer(nn.Sequential):
         kernel_size: int = 1,
         groups: int = 1,
         stride: int = 1,
-        activation: bool = True
+        activation: bool = True,
     ):
         layers = [
             nn.Conv2d(
@@ -22,12 +22,10 @@ class ConvLayer(nn.Sequential):
                 stride=stride,
                 padding=kernel_size // 2,
                 groups=groups,
-                bias=False
+                bias=False,
             ),
-            nn.BatchNorm2d(out_channels)
-        ] + (
-            [nn.ReLU6(inplace=True)] if activation else []
-        )
+            nn.BatchNorm2d(out_channels),
+        ] + ([nn.ReLU6(inplace=True)] if activation else [])
         super().__init__(*layers)
 
 
@@ -36,13 +34,20 @@ class CRPBlock(nn.Module):
     Chained Residual Pooling
     Reference: https://ar5iv.org/html/1809.04766
     """
+
     def __init__(self, in_channels, out_channels, num_stages=1, use_groups=False):
         super().__init__()
         groups = in_channels if use_groups else 1
-        convs = [nn.Conv2d(
-            in_channels if (i == 0) else out_channels,
-            out_channels, kernel_size=1, bias=False, groups=groups
-        ) for i in range(num_stages)]
+        convs = [
+            nn.Conv2d(
+                in_channels if (i == 0) else out_channels,
+                out_channels,
+                kernel_size=1,
+                bias=False,
+                groups=groups,
+            )
+            for i in range(num_stages)
+        ]
         self.convs = nn.ModuleList(convs)
         self.pool = nn.MaxPool2d(kernel_size=5, stride=1, padding=2)
 
@@ -53,14 +58,19 @@ class CRPBlock(nn.Module):
             x = out + x
         return x
 
-    
-class UnetBlock(nn.Module):
 
+class UnetBlock(nn.Module):
     def __init__(
-        self, in_up, in_side, out_channels, kernel_size=1, num_stages=4, use_groups=False
+        self,
+        in_up,
+        in_side,
+        out_channels,
+        kernel_size=1,
+        num_stages=4,
+        use_groups=False,
     ):
         super().__init__()
-        self.conv_up   = ConvLayer(in_up, out_channels, kernel_size)
+        self.conv_up = ConvLayer(in_up, out_channels, kernel_size)
         self.conv_side = ConvLayer(in_side, out_channels, kernel_size)
         self.crp = CRPBlock(
             out_channels, out_channels, num_stages=num_stages, use_groups=use_groups
@@ -71,17 +81,21 @@ class UnetBlock(nn.Module):
         side_input = self.conv_side(side_input)
         if up_input.shape[-2:] != side_input.shape[-2:]:
             up_input = F.interpolate(
-                up_input, size=side_input.shape[-2:], mode="bilinear", align_corners=False
+                up_input,
+                size=side_input.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
             )
         out = self.crp(F.relu(up_input + side_input))
         return out
 
-    
+
 class DynamicUnet(nn.Module):
     """
     A Unet that take almost any backbone from timm
     Reference: https://github.com/tcapelle/hydra_net/blob/master/hydranet/models.py#L13
     """
+
     def __init__(self, backbone="mobilenetv2_100", dim=256):
         super().__init__()
         self.encoder = timm.create_model(backbone, pretrained=True, features_only=True)
@@ -94,7 +108,10 @@ class DynamicUnet(nn.Module):
         for i, ch_size in enumerate(ch_sizes[1:]):
             self.upsample_blocks.append(
                 UnetBlock(
-                    dim, ch_size, out_channels=dim, use_groups=(i==(len(features)-2))
+                    dim,
+                    ch_size,
+                    out_channels=dim,
+                    use_groups=(i == (len(features) - 2)),
                 )
             )
 
@@ -107,17 +124,19 @@ class DynamicUnet(nn.Module):
         # upsample blocks with shortcurts from the sides
         for f, ublock in zip(features[1:], self.upsample_blocks):
             x = ublock(f, x)
-        x = F.interpolate(x, size=input_shape[-2:], mode="bilinear", align_corners=False)
+        x = F.interpolate(
+            x, size=input_shape[-2:], mode="bilinear", align_corners=False
+        )
         return x
 
-    
+
 class SegmentationModel(nn.Module):
     def __init__(self, backbone="mobilenetv2_100", hidden_dim=256, num_classes=21):
         super().__init__()
         self.backbone = DynamicUnet(backbone, dim=hidden_dim)
         self.segmentation_head = nn.Sequential(
             ConvLayer(hidden_dim, hidden_dim),
-            nn.Conv2d(hidden_dim, num_classes, kernel_size=1, bias=False)
+            nn.Conv2d(hidden_dim, num_classes, kernel_size=1, bias=False),
         )
 
     def forward(self, x):
