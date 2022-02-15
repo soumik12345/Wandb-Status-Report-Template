@@ -1,8 +1,8 @@
 import wandb
 import torch
 from fastai.vision.all import *
-from camvid_utils import *
-from train_utils import *
+from segmentation.camvid_utils import *
+from segmentation.train_utils import *
 
 
 PROJECT = "CamVid"
@@ -71,7 +71,7 @@ def train_fn():
     data_loader, class_labels = get_dataloader(
         artifact_id=ARTIFACT_ID,
         batch_size=wandb.config.batch_size,
-        image_size=(wandb.config.image_height, wandb.config.image_width),
+        image_shape=(wandb.config.image_height, wandb.config.image_width),
         resize_factor=wandb.config.image_resize_factor,
         validation_split=wandb.config.validation_split,
         seed=wandb.config.seed,
@@ -107,4 +107,4 @@ def train_fn():
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT)
-    wandb.agent(sweep_id, function=train_fn)
+    wandb.agent(sweep_id, function=train_fn, count=10)
