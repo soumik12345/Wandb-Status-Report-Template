@@ -160,7 +160,7 @@ def train_fn():
     
 sweep_config_backbone = {
     "method": "bayes",
-    "metric": {"name": "valid_loss", "goal": "minimize"},
+    "metric": {"name": "foreground_acc", "goal": "maximize"},
     "early_terminate": {
         "type": "hyperband",
         "min_iter": 5,
