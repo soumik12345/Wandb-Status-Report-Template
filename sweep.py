@@ -30,7 +30,7 @@ EXPERIMENT_CONFIG = {
 LOSS_ALIAS_MAPPING = {
     "categorical_cross_entropy": CrossEntropyLossFlat,
     "focal": FocalLossFlat,
-    "DiceLoss": DiceLoss,
+    "dice": DiceLoss,
 }
 
 
