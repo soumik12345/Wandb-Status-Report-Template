@@ -1,7 +1,8 @@
 import wandb
 import torch
 from tqdm import tqdm
-from typing import Tuple, List
+from typing import Tuple, List, Dict
+
 from fastai.vision.all import *
 from fastai.callback.wandb import WandbCallback
 
@@ -26,7 +27,12 @@ def get_predictions(learner):
 
 
 def benchmark_inference_time(
-    model, image_shape: Tuple[int, int], batch_size: int, num_iter: int, seed: int
+    model,
+    image_shape: Tuple[int, int],
+    batch_size: int,
+    num_warmup_iters: int,
+    num_iter: int,
+    seed: int,
 ):
     data_loader, _ = get_dataloader(
         artifact_id="av-demo/CamVid/camvid-dataset:v0",
@@ -36,20 +42,38 @@ def benchmark_inference_time(
         validation_split=0.2,
         seed=seed,
     )
-    inference_time = 0
+
+    dummy_input = torch.randn(
+        batch_size, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
+    ).to("cuda")
+
+    starter, ender = (
+        torch.cuda.Event(enable_timing=True),
+        torch.cuda.Event(enable_timing=True),
+    )
+    timings = np.zeros((num_iter, 1))
+
+    print("Warming up GPU...")
+    for _ in tqdm(range(num_warmup_iters)):
+        _ = model(dummy_input)
+
     print(
         f"Computing inference time over {num_iter} iterations with batches of {batch_size} images..."
     )
+
     with torch.no_grad():
-        for _ in tqdm(range(num_iter)):
+        for step in tqdm(range(num_iter)):
             x, y = next(iter(data_loader.valid))
-            start_time = time.time()
-            y_pred = model(x)
-            inference_time += time.time() - start_time
-    return inference_time / (num_iter * batch_size)
+            starter.record()
+            _ = model(x)
+            ender.record()
+            torch.cuda.synchronize()
+            timings[step] = starter.elapsed_time(ender)
+
+    return np.sum(timings) / (num_iter * batch_size)
 
 
-def create_wandb_table(samples, outputs, predictions, class_labels):
+def create_wandb_table(samples, outputs, class_labels):
     "Creates a wandb table with predictions and targets side by side"
     table = wandb.Table(columns=["Image", "Predicted Mask", "Ground Truth"])
     for (image, label), pred_label in zip(samples, outputs):
@@ -102,3 +126,27 @@ def get_learner(
     if checkpoint_file is not None:
         learner.load(checkpoint_file)
     return learner
+
+
+def save_model_to_artifacts(
+    model,
+    model_name: str,
+    image_shape: Tuple[int, int],
+    artifact_name: str,
+    metadata: Dict,
+):
+    print("Saving model using scripting...")
+    saved_model_script = torch.jit.script(model)
+    saved_model_script.save(model_name + "_script.pt")
+    print("Done!!!")
+    example_forward_input = torch.randn(
+        1, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
+    ).to("cuda")
+    print("Saving model using tracing...")
+    saved_model_traced = torch.jit.trace(model, example_inputs=example_forward_input)
+    saved_model_traced.save(model_name + "_traced.pt")
+    print("Done!!!")
+    artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+    artifact.add_file(model_name + "_script.pt")
+    artifact.add_file(model_name + "_traced.pt")
+    wandb.log_artifact(artifact)

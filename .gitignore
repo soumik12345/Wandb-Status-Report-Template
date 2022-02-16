@@ -128,6 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Pytorch Models
+**.pt
+
 # WandB
 artifact**
 wandb/
