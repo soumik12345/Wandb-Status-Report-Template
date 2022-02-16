@@ -90,7 +90,7 @@ def train_fn():
     else:
         learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
 
-    samples, outputs, predictions = get_predictions(learner)
+    samples, outputs, _ = get_predictions(learner)
     table = create_wandb_table(samples, outputs, class_labels)
     wandb.log({f"Baseline_Predictions_{run.name}": table})
 

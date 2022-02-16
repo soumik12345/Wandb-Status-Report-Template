@@ -68,7 +68,7 @@ def benchmark_inference_time(
             torch.cuda.synchronize()
             timings[step] = starter.elapsed_time(ender)
 
-    return np.mean(timings)
+    return np.sum(timings) / (num_iter * batch_size)
 
 
 def create_wandb_table(samples, outputs, class_labels):
