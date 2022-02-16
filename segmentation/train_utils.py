@@ -138,12 +138,14 @@ def save_model_to_artifacts(
     print("Saving model using scripting...")
     saved_model_script = torch.jit.script(model)
     saved_model_script.save(model_name + "_script.pt")
+    print("Done!!!")
     example_forward_input = torch.randn(
         1, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
     ).to("cuda")
     print("Saving model using tracing...")
     saved_model_traced = torch.jit.trace(model, example_inputs=example_forward_input)
     saved_model_traced.save(model_name + "_traced.pt")
+    print("Done!!!")
     artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
     artifact.add_file(model_name + "_script.pt")
     artifact.add_file(model_name + "_traced.pt")
