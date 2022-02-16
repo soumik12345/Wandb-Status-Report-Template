@@ -121,9 +121,7 @@ class DynamicUnet(nn.Module):
         features = self.encoder(x)[::-1]
         # put last feature on dim of the model
         x = self.mid_conv(features[0])
-        # upsample blocks with shortcurts from the sides
-        # for f, ublock in zip(features[1:], self.upsample_blocks):
-        #     x = ublock(f, x)
+        # upsample blocks with shortcurts from the sides (jit friendly)
         for idx, ublock in enumerate(self.upsample_blocks):
             x = ublock(features[1:][idx], x)
         x = F.interpolate(

@@ -128,12 +128,21 @@ def get_learner(
     return learner
 
 
-def save_model_to_artifacts(model, model_name: str, artifact_name: str, metadata: Dict):
+def save_model_to_artifacts(
+    model,
+    model_name: str,
+    image_shape: Tuple[int, int],
+    artifact_name: str,
+    metadata: Dict,
+):
     print("Saving model using scripting...")
     saved_model_script = torch.jit.script(model)
     saved_model_script.save(model_name + "_script.pt")
+    example_forward_input = torch.randn(
+        1, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
+    ).to("cuda")
     print("Saving model using tracing...")
-    saved_model_traced = torch.jit.trace(model)
+    saved_model_traced = torch.jit.trace(model, example_inputs=example_forward_input)
     saved_model_traced.save(model_name + "_traced.pt")
     artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
     artifact.add_file(saved_model_script)
