@@ -145,6 +145,6 @@ def save_model_to_artifacts(
     saved_model_traced = torch.jit.trace(model, example_inputs=example_forward_input)
     saved_model_traced.save(model_name + "_traced.pt")
     artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
-    artifact.add_file(saved_model_script)
-    artifact.add_file(saved_model_traced)
+    artifact.add_file(model_name + "_script.pt")
+    artifact.add_file(model_name + "_traced.pt")
     wandb.log_artifact(artifact)
