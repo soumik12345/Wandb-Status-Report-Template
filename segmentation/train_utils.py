@@ -26,7 +26,12 @@ def get_predictions(learner):
 
 
 def benchmark_inference_time(
-    model, image_shape: Tuple[int, int], batch_size: int, num_iter: int, seed: int
+    model,
+    image_shape: Tuple[int, int],
+    batch_size: int,
+    num_warmup_iters: int,
+    num_iter: int,
+    seed: int,
 ):
     data_loader, _ = get_dataloader(
         artifact_id="av-demo/CamVid/camvid-dataset:v0",
@@ -36,20 +41,37 @@ def benchmark_inference_time(
         validation_split=0.2,
         seed=seed,
     )
-    inference_time = 0
+
+    dummy_input = torch.randn(
+        batch_size, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
+    ).to("cuda")
+
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
+    timings = np.zeros((num_iter, 1))
+
+    print("Warming up GPU...")
+    for _ in tqdm(range(num_warmup_iters)):
+        _ = model(dummy_input)
+
     print(
         f"Computing inference time over {num_iter} iterations with batches of {batch_size} images..."
     )
+
     with torch.no_grad():
-        for _ in tqdm(range(num_iter)):
+        for step in tqdm(range(num_iter)):
             x, y = next(iter(data_loader.valid))
-            start_time = time.time()
-            y_pred = model(x)
-            inference_time += time.time() - start_time
-    return inference_time / (num_iter * batch_size)
+            starter.record()
+            _ = model(x)
+            ender.record()
+            torch.cuda.synchronize()
+            timings[step] = starter.elapsed_time(ender)
+
+    return np.mean(timings)
 
 
-def create_wandb_table(samples, outputs, predictions, class_labels):
+def create_wandb_table(samples, outputs, class_labels):
     "Creates a wandb table with predictions and targets side by side"
     table = wandb.Table(columns=["Image", "Predicted Mask", "Ground Truth"])
     for (image, label), pred_label in zip(samples, outputs):

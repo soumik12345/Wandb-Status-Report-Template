@@ -91,7 +91,7 @@ def train_fn():
         learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
 
     samples, outputs, predictions = get_predictions(learner)
-    table = create_wandb_table(samples, outputs, predictions, class_labels)
+    table = create_wandb_table(samples, outputs, class_labels)
     wandb.log({f"Baseline_Predictions_{run.name}": table})
 
     model = learner.model.eval()
@@ -104,6 +104,7 @@ def train_fn():
                 model,
                 image_shape=(wandb.config.image_height, wandb.config.image_width),
                 batch_size=8,
+                num_warmup_iters=10,
                 num_iter=20,
                 seed=wandb.config.seed,
             )
