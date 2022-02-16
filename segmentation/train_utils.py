@@ -1,7 +1,8 @@
 import wandb
 import torch
 from tqdm import tqdm
-from typing import Tuple, List
+from typing import Tuple, List, Dict
+
 from fastai.vision.all import *
 from fastai.callback.wandb import WandbCallback
 
@@ -46,8 +47,9 @@ def benchmark_inference_time(
         batch_size, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
     ).to("cuda")
 
-    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
-        enable_timing=True
+    starter, ender = (
+        torch.cuda.Event(enable_timing=True),
+        torch.cuda.Event(enable_timing=True),
     )
     timings = np.zeros((num_iter, 1))
 
@@ -124,3 +126,16 @@ def get_learner(
     if checkpoint_file is not None:
         learner.load(checkpoint_file)
     return learner
+
+
+def save_model_to_artifacts(model, model_name: str, artifact_name: str, metadata: Dict):
+    print("Saving model using scripting...")
+    saved_model_script = torch.jit.script(model)
+    saved_model_script.save(model_name + "_script.pt")
+    print("Saving model using tracing...")
+    saved_model_traced = torch.jit.trace(model)
+    saved_model_traced.save(model_name + "_traced.pt")
+    artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+    artifact.add_file(saved_model_script)
+    artifact.add_file(saved_model_traced)
+    wandb.log_artifact(artifact)
