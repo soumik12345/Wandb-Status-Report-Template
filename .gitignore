@@ -130,6 +130,7 @@ dmypy.json
 
 # Pytorch Models
 **.pt
+**.pth
 
 # WandB
 artifact**
