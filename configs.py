@@ -4,7 +4,8 @@ from fastai.vision.all import *
 
 def get_wandb_configs() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
-
+    
+    config.name = None
     config.project = "CamVid"
     config.entity = "av-demo"
     config.job_type = "sweep"
