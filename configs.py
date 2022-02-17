@@ -46,7 +46,7 @@ def get_loss_mappings() -> ml_collections.ConfigDict:
 def get_inference_config() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
     
-    config.batch_size = 8
+    config.batch_size = 2
     config.warmup = 10
     config.num_iter = 50
     config.resize_factor = 2
