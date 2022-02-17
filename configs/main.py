@@ -1,13 +1,13 @@
 import ml_collections
 
-import wandb_configs
-import experiment
+from .wandb_configs import get_config as get_wandb_configs
+from .experiment import get_config as get_experiment_configs
 
 
 def get_config() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
     
-    config.experiment_configs = experiment.get_config()
-    config.wandb_configs = wandb_configs.get_config()
+    config.experiment_configs = get_experiment_configs()
+    config.wandb_configs = get_wandb_configs()
 
     return config

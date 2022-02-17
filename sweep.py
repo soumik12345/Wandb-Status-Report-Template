@@ -5,7 +5,7 @@ from fastai.vision.all import *
 from segmentation.camvid_utils import *
 from segmentation.train_utils import *
 from segmentation.metrics import *
-from configs import main
+from configs.main import get_config
 
 
 LOSS_ALIAS_MAPPING = {
@@ -98,7 +98,7 @@ def train_fn(configs: ml_collections.ConfigDict):
 
 
 if __name__ == "__main__":
-    config = main.get_config()
+    config = get_config()
     sweep_id = wandb.sweep(
         SWEEP_CONFIG,
         project=config.wandb_configs.project,
