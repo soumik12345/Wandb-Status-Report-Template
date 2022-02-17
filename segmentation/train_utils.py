@@ -28,6 +28,7 @@ def get_predictions(learner):
 
 def benchmark_inference_time(
     model,
+    artifact_id: str,
     image_shape: Tuple[int, int],
     batch_size: int,
     num_warmup_iters: int,
@@ -35,7 +36,7 @@ def benchmark_inference_time(
     seed: int,
 ):
     data_loader, _ = get_dataloader(
-        artifact_id="av-demo/CamVid/camvid-dataset:v0",
+        artifact_id=artifact_id,
         batch_size=batch_size,
         image_shape=image_shape,
         resize_factor=2,
@@ -61,7 +62,7 @@ def benchmark_inference_time(
         f"Computing inference time over {num_iter} iterations with batches of {batch_size} images..."
     )
 
-    with torch.no_grad():
+    with torch.inference_mode():
         for step in tqdm(range(num_iter)):
             x, y = next(iter(data_loader.valid))
             starter.record()
@@ -135,9 +136,13 @@ def save_model_to_artifacts(
     artifact_name: str,
     metadata: Dict,
 ):
+    print("Saving model checkpoint")
+    torch.save(model, model_name + ".pth")
+    
     print("Saving model using scripting...")
     saved_model_script = torch.jit.script(model)
     saved_model_script.save(model_name + "_script.pt")
+    
     print("Done!!!")
     example_forward_input = torch.randn(
         1, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
@@ -147,6 +152,7 @@ def save_model_to_artifacts(
     saved_model_traced.save(model_name + "_traced.pt")
     print("Done!!!")
     artifact = wandb.Artifact(artifact_name, type="model", metadata=metadata)
+    artifact.add_file(model_name + ".pth")
     artifact.add_file(model_name + "_script.pt")
     artifact.add_file(model_name + "_traced.pt")
     wandb.log_artifact(artifact)
