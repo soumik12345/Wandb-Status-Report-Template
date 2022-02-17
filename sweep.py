@@ -35,11 +35,12 @@ def main(_):
                     "resnet34",
                     "resnet50",
                     "vgg19",
-                    "vgg16",
                 ]
             },
             "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
-            "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
+            "learning_rate": {"distribution": "uniform",
+                              "min": 1e-5,
+                              "max": 1e-2},
             "weight_decay":{"distribution": "uniform",
                             "min": 0.,
                             "max": 0.05}
