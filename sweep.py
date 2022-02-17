@@ -91,7 +91,7 @@ def train_fn():
     else:
         learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
 
-    wandb.log({f"Predictions_{run.name}": table_from_dl(learner, learner.dls.valid, class_labels)})
+    wandb.log({f"Predictions_Table": table_from_dl(learner, learner.dls.valid, class_labels)})
 
     save_model_to_artifacts(
         learner.model, 
