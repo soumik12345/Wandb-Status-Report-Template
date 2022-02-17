@@ -14,7 +14,7 @@ from segmentation.metrics import *
 
 
 FLAGS = flags.FLAGS
-config_flags.DEFINE_config_file("absl_configs")
+config_flags.DEFINE_config_file("sweep_configs")
 
 
 SWEEP_CONFIGS = {
@@ -102,7 +102,7 @@ def train_fn(configs: ml_collections.ConfigDict):
 
 
 def main(_):
-    config = FLAGS.absl_configs
+    config = FLAGS.sweep_configs
     sweep_id = wandb.sweep(
         SWEEP_CONFIGS,
         project=config.wandb_configs.project,
