@@ -78,7 +78,7 @@ def train_fn():
     learner = get_learner(
         data_loader,
         backbone=wandb.config.backbone,
-        hidden_dim=wandb.config.hidden_dim,
+        hidden_dim=wandb.config.hidden_dims,
         num_classes=len(class_labels),
         checkpoint_file=None,
         loss_func=LOSS_ALIAS_MAPPING[wandb.config.loss_function](axis=1),
@@ -108,5 +108,5 @@ def train_fn():
 
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT)
+    sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT, entity=ENTITY)
     wandb.agent(sweep_id, function=train_fn, count=5)
