@@ -30,25 +30,19 @@ def get_predictions(learner, test_dl=None, max_n=None):
 
 
 def benchmark_inference_time(
-    model,
-    artifact_id: str,
-    image_shape: Tuple[int, int],
+    model_file,
+    image_shape: tuple[int, int],
     batch_size: int,
     num_warmup_iters: int,
     num_iter: int,
+    resize_factor: int,
     seed: int,
 ):
-    data_loader, _ = get_dataloader(
-        artifact_id=artifact_id,
-        batch_size=batch_size,
-        image_shape=image_shape,
-        resize_factor=2,
-        validation_split=0.2,
-        seed=seed,
-    )
-
+    model = torch.jit.load(model_file).cuda()
+    
     dummy_input = torch.randn(
-        batch_size, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float
+        batch_size, 3, image_shape[0] // resize_factor, 
+        image_shape[0] // resize_factor, dtype=torch.float
     ).to("cuda")
 
     starter, ender = (
@@ -58,7 +52,7 @@ def benchmark_inference_time(
     timings = np.zeros((num_iter, 1))
 
     print("Warming up GPU...")
-    for _ in tqdm(range(num_warmup_iters)):
+    for _ in progress_bar(range(num_warmup_iters)):
         _ = model(dummy_input)
 
     print(
@@ -66,16 +60,14 @@ def benchmark_inference_time(
     )
 
     with torch.inference_mode():
-        for step in tqdm(range(num_iter)):
-            x, y = next(iter(data_loader.valid))
+        for step in progress_bar(range(num_iter)):
             starter.record()
-            _ = model(x)
+            _ = model(dummy_input)
             ender.record()
             torch.cuda.synchronize()
             timings[step] = starter.elapsed_time(ender)
 
     return np.sum(timings) / (num_iter * batch_size)
-
 
 def get_learner(
     data_loader,
