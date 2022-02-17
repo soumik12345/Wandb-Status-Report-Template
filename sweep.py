@@ -21,6 +21,7 @@ def train_fn(configs: ml_collections.ConfigDict):
     wandb_configs = configs.wandb_configs
     experiment_configs = configs.experiment_configs
     loss_alias_mappings = configs.loss_mappings
+    inference_config = configs.inference
 
     wandb.init(
         project=wandb_configs.project,
@@ -57,7 +58,8 @@ def train_fn(configs: ml_collections.ConfigDict):
     wandb.log(
         {f"Predictions_Table": table_from_dl(learner, learner.dls.valid, class_labels)}
     )
-
+    
+    # store model checkpoints and JIT
     save_model_to_artifacts(
         learner.model,
         f"Unet_{wandb.config.backbone}",
@@ -70,7 +72,19 @@ def train_fn(configs: ml_collections.ConfigDict):
             "class_labels": class_labels,
         },
     )
-
+    
+    ## Inference benchmark
+    model_file = f"Unet_{wandb.config.backbone}_traced.pt"
+    torch.cuda.empty_cache()
+    inference_time = benchmark_inference_time(model_file,
+                        batch_size=inference_config.batch_size,
+                        image_shape=(wandb.config.image_height,
+                                     wandb.config.image_width),
+                        num_warmup_iters=inference_config.warmup,
+                        num_iter=inference_config.num_iter,
+                        resize_factor=inference_config.resize_factor,
+                        seed=wandb.config.seed
+                        )
 
 def main(_):
     config = FLAGS.experiment_configs

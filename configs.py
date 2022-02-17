@@ -41,6 +41,14 @@ def get_loss_mappings() -> ml_collections.ConfigDict:
 
     return config
 
+def get_inference_config() -> ml_collections.ConfigDict:
+    config = ml_collections.ConfigDict()
+    
+    config.batch_size = 8
+    config.warmup = 10
+    config.num_iter = 50
+    config.resize_factor = 2
+    return config
 
 def get_config() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
@@ -48,6 +56,7 @@ def get_config() -> ml_collections.ConfigDict:
     config.experiment_configs = get_experiment_configs()
     config.wandb_configs = get_wandb_configs()
     config.loss_mappings = get_loss_mappings()
+    config.inference = get_inference_config()
     config.sweep_count = 5
     config.sweep_method = "bayes"
     config.sweep_metric_name = "foreground_acc"
