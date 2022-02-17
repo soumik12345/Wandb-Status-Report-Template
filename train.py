@@ -22,7 +22,10 @@ def train_fn(configs: ml_collections.ConfigDict):
     experiment_configs = configs.experiment_configs
     loss_alias_mappings = configs.loss_mappings
     inference_config = configs.inference
-
+    
+    # set seeds!
+    set_seed(wandb_configs.seed)
+    
     run = wandb.init(
         name = wandb_configs.name,
         project=wandb_configs.project,
@@ -87,8 +90,7 @@ def train_fn(configs: ml_collections.ConfigDict):
                                      wandb.config.image_width),
                         num_warmup_iters=inference_config.warmup,
                         num_iter=inference_config.num_iter,
-                        resize_factor=inference_config.resize_factor,
-                        seed=wandb.config.seed
+                        resize_factor=inference_config.resize_factor
                         )
     wandb.log({"inference_time":inference_time})
 

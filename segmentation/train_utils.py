@@ -35,8 +35,7 @@ def benchmark_inference_time(
     batch_size: int,
     num_warmup_iters: int,
     num_iter: int,
-    resize_factor: int,
-    seed: int,
+    resize_factor: int
 ):
     model = torch.jit.load(model_file).cuda()
     
