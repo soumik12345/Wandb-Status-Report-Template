@@ -5,13 +5,7 @@ from fastai.vision.all import *
 from segmentation.camvid_utils import *
 from segmentation.train_utils import *
 from segmentation.metrics import *
-from configs import experiement
-
-
-PROJECT = "CamVid"
-ENTITY = "av-demo"
-ARTIFACT_ID = "av-demo/CamVid/camvid-dataset:v0"
-JOB_TYPE = "sweep"
+from configs import main
 
 
 LOSS_ALIAS_MAPPING = {
@@ -24,7 +18,10 @@ LOSS_ALIAS_MAPPING = {
 SWEEP_CONFIG = {
     "method": "bayes",
     "metric": {"name": "foreground_acc", "goal": "maximize"},
-    "early_terminate": {"type": "hyperband", "min_iter": 5,},
+    "early_terminate": {
+        "type": "hyperband",
+        "min_iter": 5,
+    },
     "parameters": {
         "batch_size": {"values": [4, 8, 16]},
         "image_resize_factor": {"values": [2, 4]},
@@ -48,19 +45,24 @@ SWEEP_CONFIG = {
 
 
 def train_fn(configs: ml_collections.ConfigDict):
+    wandb_configs = configs.wandb_configs
+    experiment_configs = configs.experiment_configs
     run = wandb.init(
-        project=PROJECT, entity=ENTITY, job_type=JOB_TYPE, config=configs.to_dict()
+        project=wandb_configs.project,
+        entity=wandb_configs.entity,
+        job_type=wandb_configs.job_type,
+        config=experiment_configs.to_dict(),
     )
 
     data_loader, class_labels = get_dataloader(
-        artifact_id=ARTIFACT_ID,
+        artifact_id=configs.wandb_configs.artifact_id,
         batch_size=wandb.config.batch_size,
         image_shape=(wandb.config.image_height, wandb.config.image_width),
         resize_factor=wandb.config.image_resize_factor,
         validation_split=wandb.config.validation_split,
-        seed=wandb.config.seed
+        seed=wandb.config.seed,
     )
-    
+
     learner = get_learner(
         data_loader,
         backbone=wandb.config.backbone,
@@ -77,22 +79,29 @@ def train_fn(configs: ml_collections.ConfigDict):
     else:
         learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
 
-    wandb.log({f"Predictions_Table": table_from_dl(learner, learner.dls.valid, class_labels)})
+    wandb.log(
+        {f"Predictions_Table": table_from_dl(learner, learner.dls.valid, class_labels)}
+    )
 
     save_model_to_artifacts(
-        learner.model, 
-        f"Unet_{wandb.config.backbone}", 
+        learner.model,
+        f"Unet_{wandb.config.backbone}",
         image_shape=(wandb.config.image_height, wandb.config.image_width),
         artifact_name=f"{run.name}-saved-model",
         metadata={
             "backbone": wandb.config.backbone,
             "hidden_dims": wandb.config.hidden_dims,
             "input_size": (wandb.config.image_height, wandb.config.image_width),
-            "class_labels": class_labels
-        }
+            "class_labels": class_labels,
+        },
     )
 
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT, entity=ENTITY)
-    wandb.agent(sweep_id, function=partial(train_fn, experiement.get_config()), count=5)
+    config = main.get_config()
+    sweep_id = wandb.sweep(
+        SWEEP_CONFIG,
+        project=config.wandb_configs.project,
+        entity=config.wandb_configs.entity,
+    )
+    wandb.agent(sweep_id, function=partial(train_fn, config), count=5)
