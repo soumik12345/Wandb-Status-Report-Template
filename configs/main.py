@@ -1,6 +1,7 @@
 import ml_collections
 
-import wandb_configs, experiment
+import wandb_configs
+import experiment
 
 
 def get_config() -> ml_collections.ConfigDict:
