@@ -8,13 +8,6 @@ from segmentation.metrics import *
 from configs.main import get_config
 
 
-LOSS_ALIAS_MAPPING = {
-    "categorical_cross_entropy": CrossEntropyLossFlat,
-    "focal": FocalLossFlat,
-    "dice": DiceLoss,
-}
-
-
 SWEEP_CONFIG = {
     "method": "bayes",
     "metric": {"name": "foreground_acc", "goal": "maximize"},
@@ -47,6 +40,8 @@ SWEEP_CONFIG = {
 def train_fn(configs: ml_collections.ConfigDict):
     wandb_configs = configs.wandb_configs
     experiment_configs = configs.experiment_configs
+    loss_alias_mappings = configs.loss_mappings
+    
     run = wandb.init(
         project=wandb_configs.project,
         entity=wandb_configs.entity,
@@ -69,7 +64,7 @@ def train_fn(configs: ml_collections.ConfigDict):
         hidden_dim=wandb.config.hidden_dims,
         num_classes=len(class_labels),
         checkpoint_file=None,
-        loss_func=LOSS_ALIAS_MAPPING[wandb.config.loss_function](axis=1),
+        loss_func=loss_alias_mappings[wandb.config.loss_function](axis=1),
         metrics=[DiceMulti(), foreground_acc],
         log_preds=False,
     )
