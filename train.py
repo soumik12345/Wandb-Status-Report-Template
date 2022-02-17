@@ -24,7 +24,7 @@ def train_fn(configs: ml_collections.ConfigDict):
     inference_config = configs.inference
     
     # set seeds!
-    set_seed(wandb_configs.seed)
+    
     
     run = wandb.init(
         name = wandb_configs.name,
@@ -33,6 +33,7 @@ def train_fn(configs: ml_collections.ConfigDict):
         job_type=wandb_configs.job_type,
         config=experiment_configs.to_dict(),
     )
+    set_seed(wandb.config.seed)
 
     data_loader, class_labels = get_dataloader(
         artifact_id=configs.wandb_configs.artifact_id,
