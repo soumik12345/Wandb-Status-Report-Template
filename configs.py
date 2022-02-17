@@ -49,5 +49,10 @@ def get_config() -> ml_collections.ConfigDict:
     config.wandb_configs = get_wandb_configs()
     config.loss_mappings = get_loss_mappings()
     config.sweep_count = 5
+    config.sweep_method = "bayes"
+    config.sweep_metric_name = "foreground_acc"
+    config.sweep_goal = "maximize"
+    config.early_terminate_type = "hyperband"
+    config.early_terminate_min_iter = 5
 
     return config

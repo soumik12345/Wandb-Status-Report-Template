@@ -14,36 +14,7 @@ from segmentation.metrics import *
 
 
 FLAGS = flags.FLAGS
-config_flags.DEFINE_config_file("sweep_configs")
-
-
-SWEEP_CONFIGS = {
-    "method": "bayes",
-    "metric": {"name": "foreground_acc", "goal": "maximize"},
-    "early_terminate": {
-        "type": "hyperband",
-        "min_iter": 5,
-    },
-    "parameters": {
-        "batch_size": {"values": [4, 8, 16]},
-        "image_resize_factor": {"values": [2, 4]},
-        "backbone": {
-            "values": [
-                "mobilenetv2_100",
-                "mobilenetv3_small_050",
-                "mobilenetv3_large_100",
-                "resnet18",
-                "resnet34",
-                "resnet50",
-                "vgg19",
-                "vgg16",
-            ]
-        },
-        "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
-        "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
-        "fit": {"values": ["fit", "fine-tune"]},
-    },
-}
+config_flags.DEFINE_config_file("experiment_configs")
 
 
 def train_fn(configs: ml_collections.ConfigDict):
@@ -102,9 +73,39 @@ def train_fn(configs: ml_collections.ConfigDict):
 
 
 def main(_):
-    config = FLAGS.sweep_configs
+    config = FLAGS.experiment_configs
+    sweep_configs = {
+        "method": config.sweep_method,
+        "metric": {
+            "name": config.sweep_metric_name,
+            "goal": config.sweep_goal
+        },
+        "early_terminate": {
+            "type": config.early_terminate_type,
+            "min_iter": config.early_terminate_min_iter,
+        },
+        "parameters": {
+            "batch_size": {"values": [4, 8, 16]},
+            "image_resize_factor": {"values": [2, 4]},
+            "backbone": {
+                "values": [
+                    "mobilenetv2_100",
+                    "mobilenetv3_small_050",
+                    "mobilenetv3_large_100",
+                    "resnet18",
+                    "resnet34",
+                    "resnet50",
+                    "vgg19",
+                    "vgg16",
+                ]
+            },
+            "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
+            "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
+            "fit": {"values": ["fit", "fine-tune"]},
+        },
+    }
     sweep_id = wandb.sweep(
-        SWEEP_CONFIGS,
+        sweep_configs,
         project=config.wandb_configs.project,
         entity=config.wandb_configs.entity,
     )
