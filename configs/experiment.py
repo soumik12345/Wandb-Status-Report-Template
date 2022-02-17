@@ -3,7 +3,7 @@ import ml_collections
 
 def get_config() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
-    
+
     config.seed = 123
     config.batch_size = 8
     config.image_height = 720
