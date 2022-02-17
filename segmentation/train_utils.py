@@ -8,6 +8,7 @@ from fastai.callback.wandb import WandbCallback
 
 from .camvid_utils import get_dataloader
 from .model import SegmentationModel
+from .metrics import create_dice_table
 
 
 def get_model_parameters(model):
@@ -16,12 +17,14 @@ def get_model_parameters(model):
     return num_params
 
 
-def get_predictions(learner):
+def get_predictions(learner, test_dl=None, max_n=None):
+    """Return the samples = (x,y) and outputs (model predictions decoded), and predictions (raw preds)"""
+    test_dl = learner.dls.valid if test_dl is None else test_dl
     inputs, predictions, targets, outputs = learner.get_preds(
-        with_input=True, with_decoded=True
+        dl=test_dl, with_input=True, with_decoded=True
     )
     x, y, samples, outputs = learner.dls.valid.show_results(
-        tuplify(inputs) + tuplify(targets), outputs, show=False, max_n=36
+        tuplify(inputs) + tuplify(targets), outputs, show=False, max_n=max_n
     )
     return samples, outputs, predictions
 
@@ -74,35 +77,6 @@ def benchmark_inference_time(
     return np.sum(timings) / (num_iter * batch_size)
 
 
-def create_wandb_table(samples, outputs, class_labels):
-    "Creates a wandb table with predictions and targets side by side"
-    table = wandb.Table(columns=["Image", "Predicted Mask", "Ground Truth"])
-    for (image, label), pred_label in zip(samples, outputs):
-        image = image.permute(1, 2, 0)
-        table.add_data(
-            wandb.Image(image),
-            wandb.Image(
-                image,
-                masks={
-                    "predictions": {
-                        "mask_data": pred_label[0].numpy(),
-                        "class_labels": class_labels,
-                    }
-                },
-            ),
-            wandb.Image(
-                image,
-                masks={
-                    "ground truths": {
-                        "mask_data": label.numpy(),
-                        "class_labels": class_labels,
-                    }
-                },
-            ),
-        )
-    return table
-
-
 def get_learner(
     data_loader,
     backbone: str,
@@ -114,19 +88,25 @@ def get_learner(
     log_preds: bool = False,
 ):
     model = SegmentationModel(backbone, hidden_dim, num_classes=num_classes)
-    save_model_callback = SaveModelCallback(fname=f"unet_{backbone}")
     mixed_precision_callback = MixedPrecision()
-    wandb_callback = WandbCallback(log_preds=log_preds)
+    wandb_callback = WandbCallback(log_model=False, log_preds=log_preds)
     learner = Learner(
         data_loader,
         model,
         loss_func=loss_func,
         metrics=metrics,
-        cbs=[save_model_callback, mixed_precision_callback, wandb_callback],
+        cbs=[mixed_precision_callback, wandb_callback],
     )
     if checkpoint_file is not None:
-        learner.load(checkpoint_file)
+        load_model(checkpoint_file, learner.model, opt=None, with_opt=False)
+        # learner.load(checkpoint_file)
     return learner
+
+
+def table_from_dl(learn, test_dl, class_labels):
+    samples, outputs, predictions = get_predictions(learn, test_dl)
+    table = create_dice_table(samples, outputs, predictions, class_labels)
+    return table
 
 
 def save_model_to_artifacts(
@@ -138,11 +118,11 @@ def save_model_to_artifacts(
 ):
     print("Saving model checkpoint")
     torch.save(model, model_name + ".pth")
-    
+
     print("Saving model using scripting...")
     saved_model_script = torch.jit.script(model)
     saved_model_script.save(model_name + "_script.pt")
-    
+
     print("Done!!!")
     example_forward_input = torch.randn(
         1, 3, image_shape[0] // 2, image_shape[0] // 2, dtype=torch.float

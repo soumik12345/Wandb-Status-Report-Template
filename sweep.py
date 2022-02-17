@@ -3,6 +3,7 @@ import torch
 from fastai.vision.all import *
 from segmentation.camvid_utils import *
 from segmentation.train_utils import *
+from segmentation.metrics import *
 
 
 PROJECT = "CamVid"
@@ -71,13 +72,13 @@ def train_fn():
         image_shape=(wandb.config.image_height, wandb.config.image_width),
         resize_factor=wandb.config.image_resize_factor,
         validation_split=wandb.config.validation_split,
-        seed=wandb.config.seed,
+        seed=wandb.config.seed
     )
-
+    
     learner = get_learner(
         data_loader,
         backbone=wandb.config.backbone,
-        hidden_dim=wandb.config.hidden_dims,
+        hidden_dim=wandb.config.hidden_dim,
         num_classes=len(class_labels),
         checkpoint_file=None,
         loss_func=LOSS_ALIAS_MAPPING[wandb.config.loss_function](axis=1),
@@ -90,24 +91,18 @@ def train_fn():
     else:
         learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
 
-    samples, outputs, _ = get_predictions(learner)
-    table = create_wandb_table(samples, outputs, class_labels)
-    wandb.log({f"Baseline_Predictions_{run.name}": table})
+    wandb.log({f"Predictions_{run.name}": table_from_dl(learner, learner.dls.valid, class_labels)})
 
-    model = learner.model.eval()
-    torch.cuda.empty_cache()
-    del learner
-    wandb.log({"Model_Parameters": get_model_parameters(model)})
-    wandb.log(
-        {
-            "Inference_Time": benchmark_inference_time(
-                model,
-                image_shape=(wandb.config.image_height, wandb.config.image_width),
-                batch_size=8,
-                num_warmup_iters=10,
-                num_iter=20,
-                seed=wandb.config.seed,
-            )
+    save_model_to_artifacts(
+        learner.model, 
+        f"Unet_{wandb.config.backbone}", 
+        image_shape=(wandb.config.image_height, wandb.config.image_width),
+        artifact_name=f"{run.name}-saved-model",
+        metadata={
+            "backbone": wandb.config.backbone,
+            "hidden_dims": wandb.config.hidden_dims,
+            "input_size": (wandb.config.image_height, wandb.config.image_width),
+            "class_labels": class_labels
         }
     )
 
