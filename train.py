@@ -52,9 +52,13 @@ def train_fn(configs: ml_collections.ConfigDict):
     )
 
     if wandb.config.fit == "fit":
-        learner.fit_one_cycle(wandb.config.num_epochs, wandb.config.learning_rate)
+        learner.fit_one_cycle(wandb.config.num_epochs, 
+                              wandb.config.learning_rate,
+                              wd=wandb.config.weight_decay)
     else:
-        learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
+        learner.fine_tune(wandb.config.num_epochs, 
+                          wandb.config.learning_rate,
+                          wd=wandb.config.weight_decay)
 
     wandb.log(
         {f"Predictions_Table": table_from_dl(learner, learner.dls.valid, class_labels)}

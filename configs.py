@@ -27,6 +27,7 @@ def get_experiment_configs() -> ml_collections.ConfigDict:
     config.hidden_dims = 256
     config.num_epochs = 5
     config.loss_function = "categorical_cross_entropy"
+    config.weight_decay = 1e-2
     config.learning_rate = 1e-3
     config.fit = "fit"
 

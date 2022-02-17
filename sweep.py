@@ -41,6 +41,9 @@ def main(_):
             "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
             "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
             "fit": {"values": ["fit", "fine-tune"]},
+            "weight_decay":{"distribution": "uniform",
+                            "min": 0.,
+                            "max": 0.05}
         },
     }
     sweep_id = wandb.sweep(
