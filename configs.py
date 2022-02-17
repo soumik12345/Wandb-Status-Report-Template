@@ -35,8 +35,8 @@ def get_experiment_configs() -> ml_collections.ConfigDict:
 def get_loss_mappings() -> ml_collections.ConfigDict:
     config = ml_collections.ConfigDict()
 
-    config.categorical_cross_entropy = (CrossEntropyLossFlat,)
-    config.focal = (FocalLossFlat,)
+    config.categorical_cross_entropy = CrossEntropyLossFlat
+    config.focal = FocalLossFlat
     config.dice = DiceLoss
 
     return config
