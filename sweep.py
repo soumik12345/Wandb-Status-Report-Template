@@ -1,31 +1,17 @@
 import wandb
-import torch
+import ml_collections
+from functools import partial
 from fastai.vision.all import *
 from segmentation.camvid_utils import *
 from segmentation.train_utils import *
 from segmentation.metrics import *
+from configs import experiement
 
 
 PROJECT = "CamVid"
 ENTITY = "av-demo"
 ARTIFACT_ID = "av-demo/CamVid/camvid-dataset:v0"
 JOB_TYPE = "sweep"
-
-
-EXPERIMENT_CONFIG = {
-    "seed": 123,
-    "batch_size": 8,
-    "image_height": 720,
-    "image_width": 960,
-    "image_resize_factor": 4,
-    "validation_split": 0.2,
-    "backbone": "mobilenetv2_100",
-    "hidden_dims": 256,
-    "num_epochs": 5,
-    "loss_function": "categorical_cross_entropy",
-    "learning_rate": 1e-3,
-    "fit": "fit",
-}
 
 
 LOSS_ALIAS_MAPPING = {
@@ -61,9 +47,9 @@ SWEEP_CONFIG = {
 }
 
 
-def train_fn():
+def train_fn(configs: ml_collections.ConfigDict):
     run = wandb.init(
-        project=PROJECT, entity=ENTITY, job_type=JOB_TYPE, config=EXPERIMENT_CONFIG
+        project=PROJECT, entity=ENTITY, job_type=JOB_TYPE, config=configs.to_dict()
     )
 
     data_loader, class_labels = get_dataloader(
@@ -109,4 +95,4 @@ def train_fn():
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT, entity=ENTITY)
-    wandb.agent(sweep_id, function=train_fn, count=5)
+    wandb.agent(sweep_id, function=partial(train_fn, experiement.get_config()), count=5)
