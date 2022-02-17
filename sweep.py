@@ -1,12 +1,22 @@
 import wandb
-import ml_collections
 from functools import partial
 from fastai.vision.all import *
+
+from absl import app
+from absl import flags
+
+import ml_collections
+from ml_collections.config_flags import config_flags
+
 from segmentation.camvid_utils import *
 from segmentation.train_utils import *
 from segmentation.metrics import *
-from configs.main import get_config
 from configs.sweep import sweep_configs
+
+
+FLAGS = flags.FLAGS
+config_flags.DEFINE_config_file("absl_configs")
+
 
 
 def train_fn(configs: ml_collections.ConfigDict):
@@ -64,8 +74,8 @@ def train_fn(configs: ml_collections.ConfigDict):
     )
 
 
-if __name__ == "__main__":
-    config = get_config()
+def main(_):
+    config = FLAGS.absl_configs
     sweep_id = wandb.sweep(
         sweep_configs,
         project=config.wandb_configs.project,
@@ -74,3 +84,7 @@ if __name__ == "__main__":
     wandb.agent(
         sweep_id, function=partial(train_fn, config), count=config.sweep_count
     )
+
+
+if __name__ == "__main__":
+    app.run(main)
