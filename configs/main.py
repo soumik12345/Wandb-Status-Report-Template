@@ -1,8 +1,8 @@
 import ml_collections
 
-from .wandb_configs import get_config as get_wandb_configs
-from .experiment import get_config as get_experiment_configs
-from .loss import get_config as get_loss_mappings
+from wandb_configs import get_config as get_wandb_configs
+from experiment import get_config as get_experiment_configs
+from loss import get_config as get_loss_mappings
 
 
 def get_config() -> ml_collections.ConfigDict:
