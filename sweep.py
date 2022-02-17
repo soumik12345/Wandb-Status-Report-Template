@@ -1,117 +1,57 @@
+from absl import app, flags
 import wandb
-import torch
-from fastai.vision.all import *
-from segmentation.camvid_utils import *
-from segmentation.train_utils import *
 
+from functools import partial
 
-PROJECT = "CamVid"
-ENTITY = "av-demo"
-ARTIFACT_ID = "av-demo/CamVid/camvid-dataset:v0"
-JOB_TYPE = "sweep"
+import ml_collections
+from ml_collections.config_flags import config_flags
 
+from train import train_fn
 
-EXPERIMENT_CONFIG = {
-    "seed": 123,
-    "batch_size": 8,
-    "image_height": 720,
-    "image_width": 960,
-    "image_resize_factor": 4,
-    "validation_split": 0.2,
-    "backbone": "mobilenetv2_100",
-    "hidden_dims": 256,
-    "num_epochs": 5,
-    "loss_function": "categorical_cross_entropy",
-    "learning_rate": 1e-3,
-    "fit": "fit",
-}
+FLAGS = flags.FLAGS
+config_flags.DEFINE_config_file("experiment_configs")
 
-
-LOSS_ALIAS_MAPPING = {
-    "categorical_cross_entropy": CrossEntropyLossFlat,
-    "focal": FocalLossFlat,
-    "dice": DiceLoss,
-}
-
-
-SWEEP_CONFIG = {
-    "method": "bayes",
-    "metric": {"name": "foreground_acc", "goal": "maximize"},
-    "early_terminate": {"type": "hyperband", "min_iter": 5,},
-    "parameters": {
-        "batch_size": {"values": [4, 8, 16]},
-        "image_resize_factor": {"values": [2, 4]},
-        "backbone": {
-            "values": [
-                "mobilenetv2_100",
-                "mobilenetv3_small_050",
-                "mobilenetv3_large_100",
-                "resnet18",
-                "resnet34",
-                "resnet50",
-                "vgg19",
-                "vgg16",
-            ]
+def main(_):
+    config = FLAGS.experiment_configs
+    sweep_configs = {
+        "method": config.sweep_method,
+        "metric": {
+            "name": config.sweep_metric_name,
+            "goal": config.sweep_goal
         },
-        "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
-        "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
-        "fit": {"values": ["fit", "fine-tune"]},
-    },
-}
-
-
-def train_fn():
-    run = wandb.init(
-        project=PROJECT, entity=ENTITY, job_type=JOB_TYPE, config=EXPERIMENT_CONFIG
+        "early_terminate": {
+            "type": config.early_terminate_type,
+            "min_iter": config.early_terminate_min_iter,
+        },
+        "parameters": {
+            "batch_size": {"values": [4, 8, 16]},
+            "image_resize_factor": {"values": [2, 4]},
+            "backbone": {
+                "values": [
+                    "mobilenetv2_100",
+                    "mobilenetv3_small_050",
+                    "mobilenetv3_large_100",
+                    "resnet18",
+                    "resnet34",
+                    "resnet50",
+                    "vgg19",
+                    "vgg16",
+                ]
+            },
+            "loss_function": {"values": ["categorical_cross_entropy", "focal", "dice"]},
+            "learning_rate": {"values": [1e-2, 1e-3, 1e-4]},
+            "fit": {"values": ["fit", "fine-tune"]},
+        },
+    }
+    sweep_id = wandb.sweep(
+        sweep_configs,
+        project=config.wandb_configs.project,
+        entity=config.wandb_configs.entity,
     )
-
-    data_loader, class_labels = get_dataloader(
-        artifact_id=ARTIFACT_ID,
-        batch_size=wandb.config.batch_size,
-        image_shape=(wandb.config.image_height, wandb.config.image_width),
-        resize_factor=wandb.config.image_resize_factor,
-        validation_split=wandb.config.validation_split,
-        seed=wandb.config.seed,
-    )
-
-    learner = get_learner(
-        data_loader,
-        backbone=wandb.config.backbone,
-        hidden_dim=wandb.config.hidden_dims,
-        num_classes=len(class_labels),
-        checkpoint_file=None,
-        loss_func=LOSS_ALIAS_MAPPING[wandb.config.loss_function](axis=1),
-        metrics=[DiceMulti(), foreground_acc],
-        log_preds=False,
-    )
-
-    if wandb.config.fit == "fit":
-        learner.fit_one_cycle(wandb.config.num_epochs, wandb.config.learning_rate)
-    else:
-        learner.fine_tune(wandb.config.num_epochs, wandb.config.learning_rate)
-
-    samples, outputs, _ = get_predictions(learner)
-    table = create_wandb_table(samples, outputs, class_labels)
-    wandb.log({f"Baseline_Predictions_{run.name}": table})
-
-    model = learner.model.eval()
-    torch.cuda.empty_cache()
-    del learner
-    wandb.log({"Model_Parameters": get_model_parameters(model)})
-    wandb.log(
-        {
-            "Inference_Time": benchmark_inference_time(
-                model,
-                image_shape=(wandb.config.image_height, wandb.config.image_width),
-                batch_size=8,
-                num_warmup_iters=10,
-                num_iter=20,
-                seed=wandb.config.seed,
-            )
-        }
+    wandb.agent(
+        sweep_id, function=partial(train_fn, config), count=config.sweep_count
     )
 
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(SWEEP_CONFIG, project=PROJECT)
-    wandb.agent(sweep_id, function=train_fn, count=5)
+    app.run(main)
