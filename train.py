@@ -1,3 +1,4 @@
+import gc
 import wandb
 import ml_collections
 from fastai.vision.all import *
@@ -76,8 +77,9 @@ def train_fn(configs: ml_collections.ConfigDict):
 
     ## Inference benchmark
     model_file = f"Unet_{wandb.config.backbone}_traced.pt"
-    learner.model.cpu()
+    learner.model = learner.model.cpu()
     del learner
+    gc.collect()
     torch.cuda.empty_cache()
     inference_time = benchmark_inference_time(
         model_file,

@@ -3,7 +3,6 @@ from absl import app, flags
 
 from functools import partial
 
-import ml_collections
 from ml_collections.config_flags import config_flags
 
 from train import train_fn
